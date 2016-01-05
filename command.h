@@ -34,10 +34,16 @@ struct Command {
   bool ignore_error;
 };
 
+struct NinjaCommand {
+  string cmd;
+  vector<string> params;
+};
+
 class CommandEvaluator {
  public:
   explicit CommandEvaluator(Evaluator* ev);
   void Eval(DepNode* n, vector<Command*>* commands);
+  void EvalForNinja(DepNode* n, NinjaCommand* nc);
   const DepNode* current_dep_node() const { return current_dep_node_; }
 
  private:

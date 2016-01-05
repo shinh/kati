@@ -212,6 +212,18 @@ class NinjaGenerator {
     return StringPrintf("rule%d", rule_id_++);
   }
 
+#if 0
+  Symbol GenRuleName2(const string& c) {
+    static unordered_map<string, Symbol> id_map;
+    auto found = id_map.find(c);
+    if (found == id_map.end()) {
+      id_map[c] = Intern(StringPrintf("rule%zu", id_map.size()));
+    } else {
+      return found->second;
+    }
+  }
+#endif
+
   StringPiece TranslateCommand(const char* in, string* cmd_buf) {
     const size_t orig_size = cmd_buf->size();
     bool prev_backslash = false;
@@ -429,6 +441,53 @@ class NinjaGenerator {
       return;
     }
 
+    NinjaCommand nc;
+    ce_.EvalForNinja(node, &nc);
+
+    string rule_name = "phony";
+    bool use_local_pool = false;
+    if (!nc.cmd.empty()) {
+      static map<string, string> id_map;
+      auto found = id_map.find(nc.cmd);
+      if (found == id_map.end()) {
+        id_map[nc.cmd] = rule_name = StringPrintf("rule%zu", id_map.size());
+        fprintf(fp_, "rule %s\n", rule_name.c_str());
+        // Fix
+        fprintf(fp_, " description = build $out\n");
+        fprintf(fp_, " rspfile = $out.rsp\n");
+        fprintf(fp_, " rspfile_content = %s\n", nc.cmd.c_str());
+        fprintf(fp_, " command = %s $out.rsp\n", shell_.c_str());
+      } else {
+        rule_name = found->second;
+      }
+
+#if 0
+      string description = "build $out";
+      string cmd_buf;
+
+      use_local_pool |= GenShellScript(commands, &cmd_buf, &description);
+      fprintf(fp_, " description = %s\n", description.c_str());
+      EmitDepfile(&cmd_buf);
+
+      // It seems Linux is OK with ~130kB and Mac's limit is ~250kB.
+      // TODO: Find this number automatically.
+      if (cmd_buf.size() > 100 * 1000) {
+        fprintf(fp_, " rspfile = $out.rsp\n");
+        fprintf(fp_, " rspfile_content = %s\n", cmd_buf.c_str());
+        fprintf(fp_, " command = %s $out.rsp\n", shell_.c_str());
+      } else {
+        EscapeShell(&cmd_buf);
+        fprintf(fp_, " command = %s -c \"%s\"\n",
+                shell_.c_str(), cmd_buf.c_str());
+      }
+      if (node->is_restat) {
+        fprintf(fp_, " restat = 1\n");
+      }
+#endif
+
+    }
+
+#if 0
     vector<Command*> commands;
     ce_.Eval(node, &commands);
 
@@ -459,8 +518,13 @@ class NinjaGenerator {
         fprintf(fp_, " restat = 1\n");
       }
     }
+#endif
 
     EmitBuild(node, rule_name, use_local_pool);
+
+    for (size_t i = 0; i < nc.params.size(); i++) {
+      fprintf(fp_, " p%zu = %s\n", i, nc.params[i].c_str());
+    }
 
     for (DepNode* d : node->deps) {
       EmitNode(d);

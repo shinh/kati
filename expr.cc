@@ -43,6 +43,10 @@ Value::Value() {
 Value::~Value() {
 }
 
+void Value::GetExprList(vector<Value*>*) const {
+  CHECK(false);
+}
+
 string Value::DebugString() const {
   if (static_cast<const Value*>(this)) {
     return NoLineBreak(DebugString_());
@@ -94,6 +98,22 @@ class Expr : public Value {
     }
   }
 
+  virtual Value* Compact() {
+    if (vals_.size() != 1) {
+      return this;
+    }
+    Value* r = vals_[0];
+    vals_.clear();
+    delete this;
+    return r;
+  }
+
+  virtual bool IsExpr() const { return true; }
+
+  virtual void GetExprList(vector<Value*>* vals) const {
+    copy(vals_.begin(), vals_.end(), back_inserter(*vals));
+  }
+
   virtual string DebugString_() const override {
     string r;
     for (Value* v : vals_) {
@@ -106,16 +126,6 @@ class Expr : public Value {
     }
     if (!r.empty())
       r += ")";
-    return r;
-  }
-
-  virtual Value* Compact() {
-    if (vals_.size() != 1) {
-      return this;
-    }
-    Value* r = vals_[0];
-    vals_.clear();
-    delete this;
     return r;
   }
 

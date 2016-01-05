@@ -193,6 +193,7 @@ void CommandEvaluator::Eval(DepNode* n, vector<Command*>* commands) {
   ev_->set_loc(n->loc);
   ev_->set_current_scope(n->rule_vars);
   current_dep_node_ = n;
+
   for (Value* v : n->cmds) {
     const string&& cmds_buf = v->Eval(ev_);
     StringPiece cmds = cmds_buf;
@@ -241,6 +242,84 @@ void CommandEvaluator::Eval(DepNode* n, vector<Command*>* commands) {
          back_inserter(*commands));
     ev_->clear_delayed_output_commands();
   }
+
+  ev_->set_current_scope(NULL);
+}
+
+void CommandEvaluator::EvalForNinja(DepNode* n, NinjaCommand* nc) {
+  ev_->set_loc(n->loc);
+  ev_->set_current_scope(n->rule_vars);
+  current_dep_node_ = n;
+
+  for (Value* v : n->cmds) {
+    if (v->IsExpr()) {
+      vector<Value*> exprs;
+      v->GetExprList(&exprs);
+      for (Value* e : exprs) {
+        if (e->IsLiteral()) {
+          e->Eval(ev_, &nc->cmd);
+        } else {
+          nc->cmd += StringPrintf("$pzu", nc->params.size());
+          nc->params.push_back(e->Eval(ev_));
+        }
+      }
+    } else {
+      nc->cmd += StringPrintf("$pzu", nc->params.size());
+      nc->params.push_back(v->Eval(ev_));
+    }
+
+#if 0
+    const string&& cmds_buf = v->Eval(ev_);
+    StringPiece cmds = cmds_buf;
+    bool global_echo = !g_flags.is_silent_mode;
+    bool global_ignore_error = false;
+    ParseCommandPrefixes(&cmds, &global_echo, &global_ignore_error);
+    if (cmds == "")
+      continue;
+    while (true) {
+      size_t lf_cnt;
+      size_t index = FindEndOfLine(cmds, 0, &lf_cnt);
+      if (index == cmds.size())
+        index = string::npos;
+      StringPiece cmd = TrimLeftSpace(cmds.substr(0, index));
+      cmds = cmds.substr(index + 1);
+
+      bool echo = global_echo;
+      bool ignore_error = global_ignore_error;
+      ParseCommandPrefixes(&cmd, &echo, &ignore_error);
+
+      if (!cmd.empty()) {
+        Command* command = new Command(n->output);
+        command->cmd = cmd.as_string();
+        command->echo = echo;
+        command->ignore_error = ignore_error;
+        commands->push_back(command);
+      }
+      if (index == string::npos)
+        break;
+    }
+    continue;
+#endif
+  }
+
+  // TODO
+#if 0
+  if (!ev_->delayed_output_commands().empty()) {
+    vector<Command*> output_commands;
+    for (const string& cmd : ev_->delayed_output_commands()) {
+      Command* c = new Command(n->output);
+      c->cmd = cmd;
+      c->echo = false;
+      c->ignore_error = false;
+      output_commands.push_back(c);
+    }
+    // Prepend |output_commands|.
+    commands->swap(output_commands);
+    copy(output_commands.begin(), output_commands.end(),
+         back_inserter(*commands));
+    ev_->clear_delayed_output_commands();
+  }
+#endif
 
   ev_->set_current_scope(NULL);
 }

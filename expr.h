@@ -42,6 +42,8 @@ class Value : public Evaluable {
   virtual Value* Compact() { return this; }
 
   virtual bool IsLiteral() const { return false; }
+  virtual bool IsExpr() const { return false; }
+  virtual void GetExprList(vector<Value*>* vals) const;
 
   string DebugString() const;
 
