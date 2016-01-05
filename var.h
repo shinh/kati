@@ -49,6 +49,7 @@ class Var : public Evaluable {
   virtual const char* Flavor() const = 0;
   virtual VarOrigin Origin() const = 0;
   virtual bool IsDefined() const { return true; }
+  virtual bool IsSimple() const { return false; }
 
   virtual void AppendVar(Evaluator* ev, Value* v);
 
@@ -70,6 +71,8 @@ class SimpleVar : public Var {
   virtual VarOrigin Origin() const {
     return origin_;
   }
+
+  virtual bool IsSimple() const { return true; }
 
   virtual void Eval(Evaluator* ev, string* s) const override;
 

@@ -493,8 +493,15 @@ class NinjaGenerator {
       return;
     string r;
     bool last_dollar = false;
-    for (char c : *s) {
+    for (size_t i = 0; i < s->size(); i++) {
+      char c = (*s)[i];
       switch (c) {
+        case '\1':
+          if ((*s)[i+1] == '$' && (*s)[i+2]) {
+            r += '$';
+            i += 2;
+          }
+          break;
         case '$':
           if (last_dollar) {
             r += c;
@@ -603,6 +610,11 @@ class NinjaGenerator {
 
     for (DepNode* node : nodes) {
       EmitNode(node);
+    }
+
+    for (Symbol s : GetReferencedSymbols()) {
+      const string&& v = ev_->EvalVar(s);
+      fprintf(fp_, "%s = %s\n", s.c_str(), v.c_str());
     }
 
     unordered_set<Symbol> used_env_vars(Vars::used_env_vars());

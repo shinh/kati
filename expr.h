@@ -16,9 +16,11 @@
 #define EXPR_H_
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "string_piece.h"
+#include "symtab.h"
 
 using namespace std;
 
@@ -69,5 +71,7 @@ Value* NewExpr2(Value* v1, Value* v2);
 Value* NewExpr3(Value* v1, Value* v2, Value* v3);
 
 Value* NewLiteral(StringPiece s);
+
+const unordered_set<Symbol>& GetReferencedSymbols();
 
 #endif  // EXPR_H_

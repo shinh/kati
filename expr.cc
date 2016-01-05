@@ -50,6 +50,10 @@ string Value::DebugString() const {
   return "(null)";
 }
 
+namespace {
+
+unordered_set<Symbol> g_referenced_symbols;
+
 class Literal : public Value {
  public:
   explicit Literal(StringPiece s)
@@ -133,7 +137,14 @@ class SymRef : public Value {
 
   virtual void Eval(Evaluator* ev, string* s) const override {
     Var* v = ev->LookupVar(name_);
-    v->Eval(ev, s);
+    if (ev->avoid_io() && ev->eval_depth() == 0 && v->IsSimple()) {
+      *s += '\1';
+      *s += '$';
+      *s += name_.str();
+      g_referenced_symbols.insert(name_);
+    } else {
+      v->Eval(ev, s);
+    }
   }
 
   virtual string DebugString_() const override {
@@ -436,6 +447,8 @@ Value* ParseDollar(const Loc& loc, StringPiece s, size_t* index_out) {
   }
 }
 
+}  // namespace
+
 Value* ParseExprImpl(const Loc& loc,
                      StringPiece s, const char* terms, ParseExprOpt opt,
                      size_t* index_out, bool trim_right_space) {
@@ -593,4 +606,8 @@ Value* NewExpr3(Value* v1, Value* v2, Value* v3) {
 
 Value* NewLiteral(StringPiece s) {
   return new Literal(s);
+}
+
+const unordered_set<Symbol>& GetReferencedSymbols() {
+  return g_referenced_symbols;
 }
